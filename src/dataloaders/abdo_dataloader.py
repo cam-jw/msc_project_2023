@@ -14,8 +14,8 @@ import json
 from typing import List, Tuple, Dict
 import sys
 
-BASE_PATH = "/vol/biomedic3/bglocker/msc2023/cw1422/code/"
-sys.path.append(BASE_PATH)
+# BASE_PATH = "/vol/biomedic3/bglocker/msc2023/cw1422/code/"
+# sys.path.append(BASE_PATH)
 
 def build_dataloaders(
         img_size: int = 512,

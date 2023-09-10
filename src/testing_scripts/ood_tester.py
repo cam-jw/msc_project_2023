@@ -11,20 +11,19 @@ import time
 BASE_PATH = "/vol/biomedic3/bglocker/msc2023/cw1422/code/"
 sys.path.append(BASE_PATH)
 
-from my_dataloaders.abdo.sam_abdo_loader_with_prompts_1007 import build_dataloaders as build_dataloaders_abdo
-from my_dataloaders.abdo_tumours.abdo_tumour_uncertainty_loader import build_dataloader as build_dataloader_tumours
-from my_utils.prompt_generator_from_centroids import Generator as PromptGenerator
+from ..dataloaders.abdo_dataloader import build_dataloaders as build_dataloaders_abdo
+from ..dataloaders.abdo_tumour_dataloader import build_dataloader as build_dataloader_tumours
+from ..dataloaders.prompt_generator import Generator as PromptGenerator
 
-from my_scripts.sam_final_scripts.sam_single_pass import Sam_Single_Pass
-from my_scripts.sam_final_scripts.sam_multi_prompt import Sam_Multi_Prompt
-from my_scripts.sam_final_scripts.sam_mc import Sam_MC
-from my_scripts.sam_final_scripts.sam_swag import Sam_Swag
-from my_scripts.sam_final_scripts.sam_bayes import Sam_Bayes
-from my_scripts.sam_final_scripts.sam_multi_bayes import Sam_Multi_Bayes
-from my_scripts.sam_final_scripts.sam_multi_swag import Sam_Multi_Swag
+from .sam_multi_decoder import Sam_Single_Pass
+from .sam_multi_prompt import Sam_Multi_Prompt
+from .sam_mc_dropout import Sam_MC
+from .sam_single_swag import Sam_Swag
+from .sam_single_bbb import Sam_Bayes
+from .sam_multi_bbb import Sam_Multi_Bayes
+from .sam_multi_swag import Sam_Multi_Swag
 
-from my_utils.final_utils.evaluator_2 import Evaluator
-from my_utils.final_utils.evaluate_tumours_2 import TumourEvaluator as AnomalyEvaluator
+from ..utils.evaluator import Evaluator
 
 DEVICE = "cuda:0"
 
@@ -36,23 +35,23 @@ class Tester:
 
         self.models = {
         # Single Decoders
-            # "zero_shot": self.init_base_sam,
-            # "vanilla": self.init_base_sam,
-            # "poly_prompt": self.init_multi_prompt,
-            # "monte_carlo": self.init_monte_carlo,
-            # "swag": self.init_swag,
-            # "bayes": self.init_bayes,
+            "zero_shot": self.init_base_sam,
+            "vanilla": self.init_base_sam,
+            "poly_prompt": self.init_multi_prompt,
+            "monte_carlo": self.init_monte_carlo,
+            "swag": self.init_swag,
+            "bayes": self.init_bayes,
         #     # Multi Decoders - Mean Output
-            # "multi_zero_shot": self.init_multi_decoder,
-            # "multi_decoder_mean": self.init_multi_decoder,
-            # "multi_swag_mean": self.init_multi_swag,
-            # "multi_bayes_mean": self.init_multi_bayes,
-            # "super_multi_bayes_mean": self.init_super_bayes,
+            "multi_zero_shot": self.init_multi_decoder,
+            "multi_decoder_mean": self.init_multi_decoder,
+            "multi_swag_mean": self.init_multi_swag,
+            "multi_bayes_mean": self.init_multi_bayes,
+            "super_multi_bayes_mean": self.init_super_bayes,
         #     # Multi Decoders - Mean Output
             "multi_decoder_sample": self.init_multi_decoder,
-            # "multi_swag_sample": self.init_multi_swag,
-            # "multi_bayes_sample": self.init_multi_bayes,
-            # "super_multi_bayes_sample": self.init_super_bayes
+            "multi_swag_sample": self.init_multi_swag,
+            "multi_bayes_sample": self.init_multi_bayes,
+            "super_multi_bayes_sample": self.init_super_bayes
         }
 
         self.num_samples = 3
@@ -361,11 +360,11 @@ class Tester:
                 "dev": [16, 17, 18, 19, 20],
                 "test": [20, 21, 22, 23, 24, 25, 26, 27]
             } ,
-            # "1": {
-            #     "train": [i for i in range(16, 29)],
-            #     "dev": [1, 2, 3, 4, 5],
-            #     "test": [6, 7, 8, 9, 10, 11, 12, 13]
-            # }
+            "1": {
+                "train": [i for i in range(16, 29)],
+                "dev": [1, 2, 3, 4, 5],
+                "test": [6, 7, 8, 9, 10, 11, 12, 13]
+            }
         }
 
         num_samples = 3
@@ -427,20 +426,7 @@ class Tester:
                     print("training")
                     num_steps, dices, epi_means, ali_means = model_wrapper.train(train_loader, dev_loader)
                     
-
-                    # out_dict[model_name] = {
-                    #     "epi_mean": model_wrapper.epi_means, 
-                    #     "epi_max": model_wrapper.epi_maxes,
-                    #     "ali_mean": model_wrapper.ali_means,
-                    #     "ali_max": model_wrapper.ali_maxes
-                    # }
                     print(f"Done {model_name}")
-                    # save_path = os.path.join(self.base_path, "mine")
-                    # # os.makedirs(save_path)
-                    # with open(save_path+"test2.json", "w") as f:
-                    #     json.dump(out_dict, f, indent=4)
-                    # del train_loader
-                    # del dev_loader
 
                     self.set_seed(seed)
                     anomaly_dl = build_dataloader_tumours(
@@ -455,156 +441,156 @@ class Tester:
                     evaluator = Evaluator()
                     evaluator = model_wrapper.eval_normal(anomaly_dl, evaluator, flag=f"anomaly")
 
-                    # for k in range(len(self.angles)+1):
-                    #     self.set_seed(seed)
-                    #     print(k)
-                    #     if k == 0:
-                    #         test_loader = self.get_validation(organ_int=organ_int, test_indices=test_indices)
-                    #     else:
-                    #         test_loader = self.get_test(
-                    #             organ_int, 
-                    #             test_indices, 
-                    #             self.base_window_level,
-                    #             1,
-                    #             self.angles[k-1],
-                    #             val_size=val_size,
-                    #             mean=train_mean,
-                    #             std=train_std
-                    #         )
+                    for k in range(len(self.angles)+1):
+                        self.set_seed(seed)
+                        print(k)
+                        if k == 0:
+                            test_loader = self.get_validation(organ_int=organ_int, test_indices=test_indices)
+                        else:
+                            test_loader = self.get_test(
+                                organ_int, 
+                                test_indices, 
+                                self.base_window_level,
+                                1,
+                                self.angles[k-1],
+                                val_size=val_size,
+                                mean=train_mean,
+                                std=train_std
+                            )
 
-                    #     evaluator = Evaluator()
-                    #     evaluator = model_wrapper.eval_normal(test_loader, evaluator, flag=f"space_{k}")
-                    #     evaluator.organ_dict["num_steps"] = num_steps
-                    #     evaluator.organ_dict["dices"] = dices
-                    #     evaluator.organ_dict["epi_means"] = epi_means
-                    #     evaluator.organ_dict["ali_means"] = ali_means
+                        evaluator = Evaluator()
+                        evaluator = model_wrapper.eval_normal(test_loader, evaluator, flag=f"space_{k}")
+                        evaluator.organ_dict["num_steps"] = num_steps
+                        evaluator.organ_dict["dices"] = dices
+                        evaluator.organ_dict["epi_means"] = epi_means
+                        evaluator.organ_dict["ali_means"] = ali_means
 
-                    #     final_dirs = os.path.join(
-                    #         self.base_path,
-                    #         "seed_" + str(seed), 
-                    #         self.organ_name, 
-                    #         model_name, 
-                    #         "train_size_" + str(len(train_indices)),
-                    #         "num_samples_" + str(num_samples), 
-                    #         "iteration_" + str(iteration), 
-                    #         "space_deg_factor_" + str(k)
-                    #     )
+                        final_dirs = os.path.join(
+                            self.base_path,
+                            "seed_" + str(seed), 
+                            self.organ_name, 
+                            model_name, 
+                            "train_size_" + str(len(train_indices)),
+                            "num_samples_" + str(num_samples), 
+                            "iteration_" + str(iteration), 
+                            "space_deg_factor_" + str(k)
+                        )
 
-                    #     os.makedirs(final_dirs)
-                    #     # print("saving data")
-                    #     evaluator.save_data(final_dirs)
-                    #     # print("finished saving")
+                        os.makedirs(final_dirs)
+                        # print("saving data")
+                        evaluator.save_data(final_dirs)
+                        # print("finished saving")
 
-                    #     # print("saving x embeddings")
-                    #     # x_emb_dir = final_dirs + "/x_embs.npy"
-                    #     # with open(x_emb_dir, "wb") as f:
-                    #     #     np.save(f, np.array(model_wrapper.eval_x_embs))
+                        # print("saving x embeddings")
+                        # x_emb_dir = final_dirs + "/x_embs.npy"
+                        # with open(x_emb_dir, "wb") as f:
+                        #     np.save(f, np.array(model_wrapper.eval_x_embs))
 
-                    #     # print("deleting objects")
-                    #     del evaluator
-                    #     del test_loader
-                    #     # print("clearing cache")
+                        # print("deleting objects")
+                        del evaluator
+                        del test_loader
+                        # print("clearing cache")
                         
-                    #     torch.cuda.empty_cache()
+                        torch.cuda.empty_cache()
 
-                    # for k in range(1, len(self.sigmas)):
-                    #     self.set_seed(seed)
-                    #     print(k)
-                    #     print(self.sigmas[k])
-                    #     test_loader = self.get_test(
-                    #         organ_int, 
-                    #         test_indices, 
-                    #         self.window_levels[k], 
-                    #         self.sigmas[k], 
-                    #         0.01,
-                    #         val_size=val_size,
-                    #         mean=train_mean,
-                    #         std=train_std
-                    #     )
+                    for k in range(1, len(self.sigmas)):
+                        self.set_seed(seed)
+                        print(k)
+                        print(self.sigmas[k])
+                        test_loader = self.get_test(
+                            organ_int, 
+                            test_indices, 
+                            self.window_levels[k], 
+                            self.sigmas[k], 
+                            0.01,
+                            val_size=val_size,
+                            mean=train_mean,
+                            std=train_std
+                        )
 
-                    #     evaluator = Evaluator()
-                    #     evaluator = model_wrapper.eval_normal(test_loader, evaluator, flag=f"intensity_{str(k+1)}")
-                    #     evaluator.organ_dict["num_steps"] = num_steps
-                    #     evaluator.organ_dict["dices"] = dices
-                    #     evaluator.organ_dict["epi_means"] = epi_means
-                    #     evaluator.organ_dict["ali_means"] = ali_means
+                        evaluator = Evaluator()
+                        evaluator = model_wrapper.eval_normal(test_loader, evaluator, flag=f"intensity_{str(k+1)}")
+                        evaluator.organ_dict["num_steps"] = num_steps
+                        evaluator.organ_dict["dices"] = dices
+                        evaluator.organ_dict["epi_means"] = epi_means
+                        evaluator.organ_dict["ali_means"] = ali_means
 
-                    #     final_dirs = os.path.join(
-                    #         self.base_path,
-                    #         "seed_" + str(seed), 
-                    #         self.organ_name, 
-                    #         model_name, 
-                    #         "train_size_" + str(len(train_indices)),
-                    #         "num_samples_" + str(num_samples), 
-                    #         "iteration_" + str(iteration), 
-                    #         "intensity_deg_factor_" + str(k+1)
-                    #     )
+                        final_dirs = os.path.join(
+                            self.base_path,
+                            "seed_" + str(seed), 
+                            self.organ_name, 
+                            model_name, 
+                            "train_size_" + str(len(train_indices)),
+                            "num_samples_" + str(num_samples), 
+                            "iteration_" + str(iteration), 
+                            "intensity_deg_factor_" + str(k+1)
+                        )
 
-                    #     os.makedirs(final_dirs)
-                    #     evaluator.save_data(final_dirs)
+                        os.makedirs(final_dirs)
+                        evaluator.save_data(final_dirs)
 
-                    #     # x_emb_dir = final_dirs + "/x_embs.npy"
-                    #     # with open(x_emb_dir, "wb") as f:
-                    #     #     np.save(f, np.array(model_wrapper.eval_x_embs))
+                        x_emb_dir = final_dirs + "/x_embs.npy"
+                        with open(x_emb_dir, "wb") as f:
+                            np.save(f, np.array(model_wrapper.eval_x_embs))
 
-                    #     del evaluator
-                    #     del test_loader
+                        del evaluator
+                        del test_loader
                         
-                    #     torch.cuda.empty_cache()
+                        torch.cuda.empty_cache()
 
-                    # self.set_seed(seed)
-                    # anomaly_dl = build_dataloaders_abdo(
-                    #     indices = test_indices,
-                    #     training = False,
-                    #     val_size = val_size,
-                    #     normalize_slices=True,
-                    #     axes=["axial"],
-                    #     class_selection=[6],
-                    #     window_level = [400, 50],
-                    #     noise_sigma = 0,
-                    #     add_boxes = True,
-                    #     angle = 0,
-                    #     mean = train_mean,
-                    #     std = train_std
-                    # )
-                    # evaluator = Evaluator()
-                    # evaluator = model_wrapper.eval_normal(anomaly_dl, evaluator, flag=f"anomaly")
+                    self.set_seed(seed)
+                    anomaly_dl = build_dataloaders_abdo(
+                        indices = test_indices,
+                        training = False,
+                        val_size = val_size,
+                        normalize_slices=True,
+                        axes=["axial"],
+                        class_selection=[6],
+                        window_level = [400, 50],
+                        noise_sigma = 0,
+                        add_boxes = True,
+                        angle = 0,
+                        mean = train_mean,
+                        std = train_std
+                    )
+                    evaluator = Evaluator()
+                    evaluator = model_wrapper.eval_normal(anomaly_dl, evaluator, flag=f"anomaly")
 
-                    # final_dirs = os.path.join(
-                    #         self.base_path,
-                    #         "seed_" + str(seed), 
-                    #         self.organ_name, 
-                    #         model_name, 
-                    #         "train_size_" + str(len(train_indices)),
-                    #         "num_samples_" + str(num_samples), 
-                    #         "iteration_" + str(iteration), 
-                    #         "anomaly"
-                    #     )
+                    final_dirs = os.path.join(
+                            self.base_path,
+                            "seed_" + str(seed), 
+                            self.organ_name, 
+                            model_name, 
+                            "train_size_" + str(len(train_indices)),
+                            "num_samples_" + str(num_samples), 
+                            "iteration_" + str(iteration), 
+                            "anomaly"
+                        )
 
-                    # os.makedirs(final_dirs)
-                    # evaluator.save_data(final_dirs)
+                    os.makedirs(final_dirs)
+                    evaluator.save_data(final_dirs)
 
-                    # end_time = time.time()
-                    # time_diff = end_time - start_time
-                    # minutes = int(time_diff / 60)
-                    # seconds = int(time_diff % 60)
-                    # model_dir = os.path.join(
-                    #     self.base_path,
-                    #     "seed_" + str(seed), 
-                    #     self.organ_name, 
-                    #     model_name, 
-                    #     "train_size_" + str(len(train_indices)),
-                    #     "num_samples_" + str(num_samples), 
-                    #     "iteration_" + str(iteration)
-                    #     )
+                    end_time = time.time()
+                    time_diff = end_time - start_time
+                    minutes = int(time_diff / 60)
+                    seconds = int(time_diff % 60)
+                    model_dir = os.path.join(
+                        self.base_path,
+                        "seed_" + str(seed), 
+                        self.organ_name, 
+                        model_name, 
+                        "train_size_" + str(len(train_indices)),
+                        "num_samples_" + str(num_samples), 
+                        "iteration_" + str(iteration)
+                        )
 
-                    # torch.save(model_wrapper.model.state_dict(), model_dir + "/model.pth")
-                    # print(f"Time taken for latest model training/testing = {minutes}m {seconds}s")
+                    torch.save(model_wrapper.model.state_dict(), model_dir + "/model.pth")
+                    print(f"Time taken for latest model training/testing = {minutes}m {seconds}s")
 
-                    # # with open(model_dir + "/training_x_embs.npy", "wb") as f:
-                    # #     np.save(f, np.array(model_wrapper.x_embs))
+                    with open(model_dir + "/training_x_embs.npy", "wb") as f:
+                        np.save(f, np.array(model_wrapper.x_embs))
 
-                    # del model_wrapper      
+                    del model_wrapper      
                             
 if __name__ == "__main__":
     tester = Tester()
